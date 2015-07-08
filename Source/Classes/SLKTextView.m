@@ -68,7 +68,6 @@ NSString * const SLKTextViewPastedItemData =                        @"SLKTextVie
 
 - (void)slk_commonInit
 {
-    self.placeholderColor = [UIColor lightGrayColor];
     self.pastableMediaTypes = SLKPastableMediaTypeNone;
     self.undoManagerEnabled = YES;
     
@@ -111,9 +110,13 @@ NSString * const SLKTextViewPastedItemData =                        @"SLKTextVie
     [super layoutSubviews];
     
     self.placeholderLabel.hidden = [self slk_shouldHidePlaceholder];
+    
     if (!self.placeholderLabel.hidden) {
-        self.placeholderLabel.frame = [self slk_placeholderRectThatFits:self.bounds];
-        [self sendSubviewToBack:self.placeholderLabel];
+        
+        [UIView performWithoutAnimation:^{
+            self.placeholderLabel.frame = [self slk_placeholderRectThatFits:self.bounds];
+            [self sendSubviewToBack:self.placeholderLabel];
+        }];
     }
 }
 
@@ -130,7 +133,7 @@ NSString * const SLKTextViewPastedItemData =                        @"SLKTextVie
         _placeholderLabel.numberOfLines = 1;
         _placeholderLabel.font = self.font;
         _placeholderLabel.backgroundColor = [UIColor clearColor];
-        _placeholderLabel.textColor = self.placeholderColor;
+        _placeholderLabel.textColor = [UIColor lightGrayColor];
         _placeholderLabel.hidden = YES;
         
         [self addSubview:_placeholderLabel];
@@ -416,14 +419,6 @@ SLKPastableMediaType SLKPastableMediaTypeFromNSString(NSString *string)
     
     // Updates the placeholder text alignment too
     self.placeholderLabel.textAlignment = textAlignment;
-}
-
-
-#pragma mark - UITextInputTraits Overrides
-
-- (void)insertText:(NSString *)text
-{
-    [super insertText:text];
 }
 
 

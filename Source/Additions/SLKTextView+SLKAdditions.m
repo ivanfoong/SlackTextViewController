@@ -20,7 +20,8 @@
 
 - (void)slk_clearText:(BOOL)clearUndo
 {
-    [super setText:nil];
+    // Important to call self implementation, as SLKTextView overrides setText: to add additional features.
+    [self setText:nil];
     
     if (self.undoManagerEnabled && clearUndo) {
         [self.undoManager removeAllActions];
@@ -160,8 +161,10 @@
         return;
     }
     
-    [[self.undoManager prepareWithInvocationTarget:self] setText:self.text];
-    [self.undoManager setActionName:description];
+	SLKTextView *prepareInvocation = [self.undoManager prepareWithInvocationTarget:self];
+	[prepareInvocation setText:self.text];
+	[self.undoManager setActionName:description];
+	
 }
 
 @end

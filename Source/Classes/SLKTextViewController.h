@@ -18,8 +18,9 @@
 #import <UIKit/UIKit.h>
 
 #import "SLKTextInputbar.h"
-#import "SLKTypingIndicatorView.h"
 #import "SLKTextView.h"
+#import "SLKTypingIndicatorView.h"
+#import "SLKTypingIndicatorProtocol.h"
 
 #import "SLKTextView+SLKAdditions.h"
 #import "UIScrollView+SLKAdditions.h"
@@ -58,8 +59,15 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 /** The bottom toolbar containing a text view and buttons. */
 @property (nonatomic, readonly) SLKTextInputbar *textInputbar;
 
-/** The typing indicator used to display user names horizontally. */
+/** The default typing indicator used to display user names horizontally. */
 @property (nonatomic, readonly) SLKTypingIndicatorView *typingIndicatorView;
+
+/**
+ The custom typing indicator view. Default is kind of SLKTypingIndicatorView.
+ To customize the typing indicator view, you will need to call -registerClassForTypingIndicatorView: nside of any initialization method.
+ To interact with it directly, you will need to cast the return value of -typingIndicatorProxyView to the appropriate type.
+ */
+@property (nonatomic, readonly) UIView <SLKTypingIndicatorProtocol> *typingIndicatorProxyView;
 
 /** A single tap gesture used to dismiss the keyboard. */
 @property (nonatomic, readonly) UIGestureRecognizer *singleTapGesture;
@@ -83,7 +91,7 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 @property (nonatomic, assign) BOOL shouldClearTextAtRightButtonPress;
 
 /** YES if the text input bar should still move up/down when other text inputs interacts with the keyboard. Default is NO. */
-@property (nonatomic, assign) BOOL shouldForceTextInputbarAdjustment;
+@property (nonatomic, assign) BOOL shouldForceTextInputbarAdjustment DEPRECATED_MSG_ATTRIBUTE("Use -forceTextInputbarAdjustmentForResponder:");
 
 /** YES if the scrollView should scroll to bottom when the keyboard is shown. Default is NO.*/
 @property (nonatomic, assign) BOOL shouldScrollToBottomAfterKeyboardShows;
@@ -186,6 +194,15 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 - (void)dismissKeyboard:(BOOL)animated;
 
 /**
+ Verifies if the text input bar should still move up/down even if it is not first responder. Default is NO.
+ You can override this method to perform additional tasks associated with presenting the view. You don't need call super since this method doesn't do anything.
+
+ @param responder The current first responder object.
+ @return YES so the text input bar still move up/down.
+ */
+- (BOOL)forceTextInputbarAdjustmentForResponder:(UIResponder *)responder;
+
+/**
  Notifies the view controller that the keyboard changed status.
  You can override this method to perform additional tasks associated with presenting the view. You don't need call super since this method doesn't do anything.
  
@@ -258,9 +275,10 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
  Verifies that the typing indicator view should be shown. Default is YES, if meeting some requierements.
  You can override this method to perform additional tasks. You SHOULD call super to inherit some conditionals.
  
- @return YES if the typing indicator view should be shown.
+ @return YES if the typing indicator view should be presented.
  */
-- (BOOL)canShowTypeIndicator;
+- (BOOL)canShowTypeIndicator DEPRECATED_MSG_ATTRIBUTE("Use -canShowTypingIndicator");
+- (BOOL)canShowTypingIndicator;
 
 /**
  Notifies the view controller when the user has shaked the device for undoing text typing.
@@ -353,7 +371,7 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 
 /**
  Verifies that the autocompletion view should be shown. Default is NO.
- To enabled autocompletion, MUST override this method to perform additional tasks, before the autocompletion view is shown (i.e. populating the data source).
+ To enabled autocompletion, you MUST override this method to perform additional tasks, before the autocompletion view is shown (i.e. populating the data source).
  
  @return YES if the autocompletion view should be shown.
  */
@@ -433,9 +451,18 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
  Registers a class for customizing the behavior and appearance of the text view.
  You need to call this method inside of any initialization method.
  
- @param textViewClass A SLKTextView subclass.
+ @param aClass A SLKTextView subclass.
  */
-- (void)registerClassForTextView:(Class)textViewClass;
+- (void)registerClassForTextView:(Class)aClass;
+
+/**
+ Registers a class for customizing the behavior and appearance of the typing indicator view.
+ You need to call this method inside of any initialization method.
+ Make sure to conform to SLKTypingIndicatorProtocol and implement the required methods.
+
+ @param aClass A UIView subclass conforming to the SLKTypingIndicatorProtocol.
+ */
+- (void)registerClassForTypingIndicatorView:(Class)aClass;
 
 
 #pragma mark - Delegate Methods Requiring Super
@@ -452,5 +479,8 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 
 /** UIGestureRecognizerDelegate */
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer NS_REQUIRES_SUPER;
+
+/** UIAlertViewDelegate */
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex NS_REQUIRES_SUPER;
 
 @end
