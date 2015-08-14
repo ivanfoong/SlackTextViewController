@@ -679,7 +679,7 @@ NSInteger const SLKAlertViewClearTextTag = 1534347677; // absolute hash of 'SLKT
 {
     NSString *text = [self.textView.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
-    if (text.length > 0 && ![self.textInputbar limitExceeded]) {
+    if ((text.length > 0 || [self.textView slk_hasImageAttachment]) && ![self.textInputbar limitExceeded]) {
         return YES;
     }
 
