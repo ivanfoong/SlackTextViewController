@@ -80,7 +80,7 @@
 - (void)setVisible:(BOOL)visible
 {
     // Skip when updating the same value, specially to avoid inovking KVO unnecessary
-    if (visible == self.isVisible) {
+    if (self.isVisible == visible) {
         return;
     }
     
@@ -92,7 +92,7 @@
     if (!visible) {
         [self slk_invalidateTimers];
     }
-
+    
     // Required implementation for key-value observer compliance
     [self didChangeValueForKey:NSStringFromSelector(@selector(isVisible))];
 }
@@ -109,8 +109,7 @@
 
 - (UILabel *)textLabel
 {
-    if (!_textLabel)
-    {
+    if (!_textLabel) {
         _textLabel = [UILabel new];
         _textLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _textLabel.backgroundColor = [UIColor clearColor];
@@ -234,7 +233,9 @@
     
     [self.usernames addObject:username];
     
-    self.textLabel.attributedText = [self attributedString];
+    NSAttributedString *attributedString = [self attributedString];
+    
+    self.textLabel.attributedText = attributedString;
     
     self.visible = YES;
 }
@@ -244,7 +245,7 @@
     if (!username || ![self.usernames containsObject:username]) {
         return;
     }
-
+    
     [self.usernames removeObject:username];
     
     if (self.usernames.count > 0) {
@@ -306,7 +307,7 @@
 - (void)slk_setupConstraints
 {
     NSDictionary *views = @{@"textLabel": self.textLabel};
-
+    
     [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[textLabel]|" options:0 metrics:nil views:views]];
     [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(0)-[textLabel]-(0@750)-|" options:0 metrics:nil views:views]];
     

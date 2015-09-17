@@ -58,6 +58,8 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
 
 - (void)commonInit
 {
+    [[NSNotificationCenter defaultCenter] addObserver:self.tableView selector:@selector(reloadData) name:UIContentSizeCategoryDidChangeNotification object:nil];
+
     // Register a SLKTextView subclass, if you need any special appearance and/or behavior customisation.
     [self registerClassForTextView:[MessageTextView class]];
     
@@ -89,10 +91,20 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     
     self.messages = [[NSMutableArray alloc] initWithArray:reversed];
     
-    UIBarButtonItem *editItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"icn_editing"] style:UIBarButtonItemStylePlain target:self action:@selector(editRandomMessage:)];
+    UIBarButtonItem *editItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"icn_editing"]
+                                                                 style:UIBarButtonItemStylePlain
+                                                                target:self
+                                                                action:@selector(editRandomMessage:)];
     
-    UIBarButtonItem *typeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"icn_typing"] style:UIBarButtonItemStylePlain target:self action:@selector(simulateUserTyping:)];
-    UIBarButtonItem *appendItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"icn_append"] style:UIBarButtonItemStylePlain target:self action:@selector(fillWithText:)];
+    UIBarButtonItem *typeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"icn_typing"]
+                                                                 style:UIBarButtonItemStylePlain
+                                                                target:self
+                                                                action:@selector(simulateUserTyping:)];
+    
+    UIBarButtonItem *appendItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"icn_append"]
+                                                                   style:UIBarButtonItemStylePlain
+                                                                  target:self
+                                                                  action:@selector(fillWithText:)];
     
     self.navigationItem.rightBarButtonItems = @[editItem, appendItem, typeItem];
     
@@ -106,29 +118,29 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     self.shouldScrollToBottomAfterKeyboardShows = NO;
     self.inverted = YES;
     
-    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    [self.tableView registerClass:[MessageTableViewCell class] forCellReuseIdentifier:MessengerCellIdentifier];
-
     [self.leftButton setImage:[UIImage imageNamed:@"icn_upload"] forState:UIControlStateNormal];
     [self.leftButton setTintColor:[UIColor grayColor]];
     
     [self.rightButton setTitle:NSLocalizedString(@"Send", nil) forState:UIControlStateNormal];
     
-    [self.textInputbar.editorTitle setTextColor:[UIColor darkGrayColor]];
-    [self.textInputbar.editortLeftButton setTintColor:[UIColor colorWithRed:0.0/255.0 green:122.0/255.0 blue:255.0/255.0 alpha:1.0]];
-    [self.textInputbar.editortRightButton setTintColor:[UIColor colorWithRed:0.0/255.0 green:122.0/255.0 blue:255.0/255.0 alpha:1.0]];
-    
     self.textInputbar.autoHideRightButton = YES;
     self.textInputbar.maxCharCount = 256;
     self.textInputbar.counterStyle = SLKCounterStyleSplit;
     self.textInputbar.counterPosition = SLKCounterPositionTop;
-
+    
+    [self.textInputbar.editorTitle setTextColor:[UIColor darkGrayColor]];
+    [self.textInputbar.editorLeftButton setTintColor:[UIColor colorWithRed:0.0/255.0 green:122.0/255.0 blue:255.0/255.0 alpha:1.0]];
+    [self.textInputbar.editorRightButton setTintColor:[UIColor colorWithRed:0.0/255.0 green:122.0/255.0 blue:255.0/255.0 alpha:1.0]];
+    
 #if !DEBUG_CUSTOM_TYPING_INDICATOR
     self.typingIndicatorView.canResignByTouch = YES;
 #endif
     
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    [self.tableView registerClass:[MessageTableViewCell class] forCellReuseIdentifier:MessengerCellIdentifier];
+    
     [self.autoCompletionView registerClass:[MessageTableViewCell class] forCellReuseIdentifier:AutoCompletionCellIdentifier];
-    [self registerPrefixesForAutoCompletion:@[@"@", @"#", @":"]];
+    [self registerPrefixesForAutoCompletion:@[@"@", @"#", @":", @"+:"]];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -179,6 +191,31 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     }
 }
 
+- (void)didLongPressCell:(UIGestureRecognizer *)gesture
+{
+#ifdef __IPHONE_8_0
+    if ([UIAlertController class]) {
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+        alertController.modalPresentationStyle = UIModalPresentationPopover;
+        alertController.popoverPresentationController.sourceView = gesture.view.superview;
+        alertController.popoverPresentationController.sourceRect = gesture.view.frame;
+        
+        [alertController addAction:[UIAlertAction actionWithTitle:@"Edit Message" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [self editCellMessage:gesture];
+        }]];
+        
+        [alertController addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:NULL]];
+        
+        [self.navigationController presentViewController:alertController animated:YES completion:nil];
+    }
+    else {
+        [self editCellMessage:gesture];
+    }
+#else
+    [self editCellMessage:gesture];
+#endif
+}
+
 - (void)editCellMessage:(UIGestureRecognizer *)gesture
 {
     MessageTableViewCell *cell = (MessageTableViewCell *)gesture.view;
@@ -215,6 +252,17 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
 
 
 #pragma mark - Overriden Methods
+
+- (BOOL)ignoreTextInputbarAdjustment
+{
+    return [super ignoreTextInputbarAdjustment];
+}
+
+- (BOOL)forceTextInputbarAdjustmentForResponder:(UIResponder *)responder
+{
+    // On iOS 9, returning YES helps keeping the input view visible when the keyboard if presented from another app when using multi-tasking on iPad.
+    return SLK_IS_IPAD;
+}
 
 - (void)didChangeKeyboardStatus:(SLKKeyboardStatus)status
 {
@@ -290,31 +338,13 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
 - (void)didPasteMediaContent:(NSDictionary *)userInfo
 {
     // Notifies the view controller when the user has pasted a media (image, video, etc) inside of the text view.
-    
+    [super didPasteMediaContent:userInfo];
+
     SLKPastableMediaType mediaType = [userInfo[SLKTextViewPastedItemMediaType] integerValue];
     NSString *contentType = userInfo[SLKTextViewPastedItemContentType];
-    NSData *contentData = userInfo[SLKTextViewPastedItemData];
+    id data = userInfo[SLKTextViewPastedItemData];
     
-    NSLog(@"%s : %@",__FUNCTION__, contentType);
-    
-    if ((mediaType & SLKPastableMediaTypePNG) || (mediaType & SLKPastableMediaTypeJPEG)) {
-        
-        Message *message = [Message new];
-        message.username = [LoremIpsum name];
-        message.text = @"Attachment";
-        message.attachment = [UIImage imageWithData:contentData scale:[UIScreen mainScreen].scale];
-        
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-        UITableViewRowAnimation rowAnimation = self.inverted ? UITableViewRowAnimationBottom : UITableViewRowAnimationTop;
-        UITableViewScrollPosition scrollPosition = self.inverted ? UITableViewScrollPositionBottom : UITableViewScrollPositionTop;
-        
-        [self.tableView beginUpdates];
-        [self.messages insertObject:message atIndex:0];
-        [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:rowAnimation];
-        [self.tableView endUpdates];
-        
-        [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:scrollPosition animated:YES];
-    }
+    NSLog(@"%s : %@ (type = %ld) | data : %@",__FUNCTION__, contentType, (unsigned long)mediaType, data);
 }
 
 - (void)willRequestUndo
@@ -379,7 +409,7 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     else if ([prefix isEqualToString:@"#"] && word.length > 0) {
         array = [self.channels filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self BEGINSWITH[c] %@", word]];
     }
-    else if ([prefix isEqualToString:@":"] && word.length > 1) {
+    else if (([prefix isEqualToString:@":"] || [prefix isEqualToString:@"+:"]) && word.length > 1) {
         array = [self.emojis filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self BEGINSWITH[c] %@", word]];
     }
     
@@ -431,7 +461,7 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     MessageTableViewCell *cell = (MessageTableViewCell *)[self.tableView dequeueReusableCellWithIdentifier:MessengerCellIdentifier];
     
     if (!cell.textLabel.text) {
-        UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(editCellMessage:)];
+        UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(didLongPressCell:)];
         [cell addGestureRecognizer:longPress];
     }
     
@@ -440,28 +470,8 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     cell.titleLabel.text = message.username;
     cell.bodyLabel.text = message.text;
     
-    if (message.attachment) {
-        cell.attachmentView.image = message.attachment;
-        cell.attachmentView.layer.shouldRasterize = YES;
-        cell.attachmentView.layer.rasterizationScale = [UIScreen mainScreen].scale;
-    }
-    
     cell.indexPath = indexPath;
     cell.usedForMessage = YES;
-    
-    if (cell.needsPlaceholder)
-    {
-        CGFloat scale = [UIScreen mainScreen].scale;
-        CGSize imgSize = CGSizeMake(kMessageTableViewCellAvatarHeight*scale, kMessageTableViewCellAvatarHeight*scale);
-        
-        [LoremIpsum asyncPlaceholderImageWithSize:imgSize
-                                       completion:^(UIImage *image) {
-                                           UIImage *thumbnail = [UIImage imageWithCGImage:image.CGImage scale:scale orientation:UIImageOrientationUp];
-                                           cell.thumbnailView.image = thumbnail;
-                                           cell.thumbnailView.layer.shouldRasterize = YES;
-                                           cell.thumbnailView.layer.rasterizationScale = [UIScreen mainScreen].scale;
-                                       }];
-    }
     
     // Cells must inherit the table view's transform
     // This is very important, since the main table view may be inverted
@@ -480,7 +490,7 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
     if ([self.foundPrefix isEqualToString:@"#"]) {
         item = [NSString stringWithFormat:@"# %@", item];
     }
-    else if ([self.foundPrefix isEqualToString:@":"]) {
+    else if (([self.foundPrefix isEqualToString:@":"] || [self.foundPrefix isEqualToString:@"+:"])) {
         item = [NSString stringWithFormat:@":%@:", item];
     }
     
@@ -500,7 +510,9 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
         paragraphStyle.lineBreakMode = NSLineBreakByWordWrapping;
         paragraphStyle.alignment = NSTextAlignmentLeft;
         
-        NSDictionary *attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:16.0],
+         CGFloat pointSize = [MessageTableViewCell defaultFontSize];
+        
+        NSDictionary *attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:pointSize],
                                      NSParagraphStyleAttributeName: paragraphStyle};
         
         CGFloat width = CGRectGetWidth(tableView.frame)-kMessageTableViewCellAvatarHeight;
@@ -516,9 +528,6 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
         CGFloat height = CGRectGetHeight(titleBounds);
         height += CGRectGetHeight(bodyBounds);
         height += 40.0;
-        if (message.attachment) {
-            height += 80.0 + 10.0;
-        }
         
         if (height < kMessageTableViewCellMinimumHeight) {
             height = kMessageTableViewCellMinimumHeight;
@@ -543,7 +552,7 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
         if ([self.foundPrefix isEqualToString:@"@"] && self.foundPrefixRange.location == 0) {
             [item appendString:@":"];
         }
-        else if ([self.foundPrefix isEqualToString:@":"]) {
+        else if (([self.foundPrefix isEqualToString:@":"] || [self.foundPrefix isEqualToString:@"+:"])) {
             [item appendString:@":"];
         }
         
@@ -563,13 +572,19 @@ static NSString *AutoCompletionCellIdentifier = @"AutoCompletionCell";
 }
 
 
-#pragma mark - UIScrollViewDelegate Methods
+#pragma mark - UITextViewDelegate Methods
 
-/** UITextViewDelegate */
 - (BOOL)textView:(SLKTextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
 {
     return [super textView:textView shouldChangeTextInRange:range replacementText:text];
 }
 
+
+#pragma mark - Lifeterm
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
 
 @end
